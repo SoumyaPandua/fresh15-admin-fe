@@ -200,6 +200,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const clearResetFlow = () => persistReset({ email: null, resetToken: null });
 
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      persist(null);
+    };
+
+    window.addEventListener(
+      "f15-auth-expired",
+      handleAuthExpired,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "f15-auth-expired",
+        handleAuthExpired,
+      );
+    };
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{

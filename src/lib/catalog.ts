@@ -35,7 +35,18 @@ export async function request<T>(
   }
 
   if (!res.ok || json?.success === false) {
-    if (res.status === 401) throw new Error(json?.message || "Your session has expired. Please sign in again.");
+    if (res.status === 401) {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new Event("f15-auth-expired"),
+        );
+      }
+
+      throw new Error(
+        json?.message ||
+        "Your session has expired. Please sign in again.",
+      );
+    }
     if (res.status === 403) throw new Error(json?.message || "You do not have permission to perform this action.");
     if (res.status === 404 && !json) throw new Error("This endpoint is not available on the server yet.");
     throw new Error(json?.message || `Request failed (${res.status})`);
@@ -134,13 +145,13 @@ export type ApiProduct = {
   category?: { _id?: string; name?: string; slug?: string; image?: string };
 
   categoryId?:
-    | string
-    | {
-        _id: string;
-        name?: string;
-        slug?: string;
-        image?: string;
-      };
+  | string
+  | {
+    _id: string;
+    name?: string;
+    slug?: string;
+    image?: string;
+  };
   name: string;
   slug?: string;
   description?: string;
@@ -247,14 +258,14 @@ export const deleteProduct = (id: string, token: string | null) =>
 export type ApiInventory = {
   _id: string;
   productId?:
-    | string
-    | {
-        _id: string;
-        name?: string;
-        sku?: string;
-        images?: string[];
-        unit?: string;
-      };
+  | string
+  | {
+    _id: string;
+    name?: string;
+    sku?: string;
+    images?: string[];
+    unit?: string;
+  };
   currentStock?: number;
   reservedStock?: number;
   availableStock?: number;
