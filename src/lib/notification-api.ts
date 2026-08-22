@@ -13,6 +13,8 @@ export const NOTIFICATION_TYPES = [
   "PAYMENT",
   "PROMOTION",
   "SYSTEM",
+  "BACK_IN_STOCK",
+  "PRICE_DROP",
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
