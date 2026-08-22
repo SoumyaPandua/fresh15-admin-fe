@@ -3,7 +3,7 @@ import {
   LayoutDashboard, TrendingUp, ShoppingBag, Clock, Truck, CheckCircle2, XCircle,
   Users, Bike, Package, Tags, Ticket, Sparkles, Image as ImageIcon,
   Wallet, IndianRupee, RefreshCcw, LifeBuoy, Bell, Store, MapPin, Timer,
-  BarChart3, ScrollText, UserCircle2, Leaf, Boxes, Star, BellRing, CalendarClock
+  BarChart3, ScrollText, UserCircle2, Leaf, Boxes, Star, BellRing, CalendarClock, Gift
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import {
@@ -56,6 +56,7 @@ const groups: { label: string; items: { title: string; url: string; icon: any }[
       { title: "Coupons", url: "/marketing/coupons", icon: Ticket },
       { title: "Offers", url: "/marketing/offers", icon: Sparkles },
       { title: "Banners", url: "/marketing/banners", icon: ImageIcon },
+      { title: "Loyalty & Referrals", url: "/loyalty", icon: Gift },
     ],
   },
   {
