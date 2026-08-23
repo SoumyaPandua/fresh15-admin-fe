@@ -30,6 +30,9 @@ function ZonesPage() {
     name: "",
     city: "",
     pincodes: "",
+    latitude: "",
+    longitude: "",
+    serviceRadiusKm: 5,
     fee: 29,
     minOrder: 199,
     maxConcurrentOrders: 100,
@@ -54,6 +57,9 @@ function ZonesPage() {
       name: "",
       city: "",
       pincodes: "",
+      latitude: "",
+      longitude: "",
+      serviceRadiusKm: 5,
       fee: 29,
       minOrder: 199,
       maxConcurrentOrders: 100,
@@ -69,6 +75,9 @@ function ZonesPage() {
       name: z.name,
       city: z.city ?? "",
       pincodes: z.pincodes.join(", "),
+      latitude: z.latitude == null ? "" : String(z.latitude),
+      longitude: z.longitude == null ? "" : String(z.longitude),
+      serviceRadiusKm: z.serviceRadiusKm ?? 5,
       fee: z.fee,
       minOrder: z.minOrder,
       maxConcurrentOrders: z.maxConcurrentOrders,
@@ -84,7 +93,14 @@ function ZonesPage() {
       .map((x) => x.trim())
       .filter(Boolean);
     if (!draft.name.trim() || !pincodes.length) return toast.error("Zone name and at least one pincode are required");
-    const body = { ...draft, name: draft.name.trim(), pincodes };
+    const body = {
+      ...draft,
+      name: draft.name.trim(),
+      pincodes,
+      latitude: draft.latitude === "" ? null : Number(draft.latitude),
+      longitude: draft.longitude === "" ? null : Number(draft.longitude),
+      serviceRadiusKm: Number(draft.serviceRadiusKm),
+    };
     try {
       if (editing) await deliveryConfigApi.updateZone(token, editing._id, body);
       else await deliveryConfigApi.createZone(token, body);
@@ -212,6 +228,18 @@ function ZonesPage() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Zone latitude</Label>
+                <Input type="number" value={draft.latitude} onChange={(e) => setDraft((d) => ({ ...d, latitude: e.target.value }))} placeholder="18.5204" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Zone longitude</Label>
+                <Input type="number" value={draft.longitude} onChange={(e) => setDraft((d) => ({ ...d, longitude: e.target.value }))} placeholder="73.8567" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Coordinate radius (km)</Label>
+                <Input type="number" value={draft.serviceRadiusKm} onChange={(e) => setDraft((d) => ({ ...d, serviceRadiusKm: Number(e.target.value) }))} />
+              </div>
               <div className="space-y-1.5">
                 <Label>Delivery fee</Label>
                 <Input

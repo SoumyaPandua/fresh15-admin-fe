@@ -17,6 +17,9 @@ export type AdminDeliveryZone = {
   name: string;
   pincodes: string[];
   city?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  serviceRadiusKm?: number;
   fee: number;
   minOrder: number;
   maxConcurrentOrders: number;
