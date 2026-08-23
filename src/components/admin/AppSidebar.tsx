@@ -75,6 +75,7 @@ const groups: { label: string; items: { title: string; url: string; icon: any }[
       { title: "Store Settings", url: "/settings/store", icon: Store },
       { title: "Delivery Zones", url: "/settings/zones", icon: MapPin },
       { title: "Time Slots", url: "/settings/slots", icon: Timer },
+      { title: "Partner Operations", url: "/partner-operations", icon: Bike },
     ],
   },
   {
