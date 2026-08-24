@@ -19,6 +19,7 @@ import {
   TrendingDown,
   Clock,
   Loader2,
+  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
@@ -47,15 +48,21 @@ function RefundCenter() {
   const processRefund = useProcessRefund();
   const rejectRefund = useRejectRefund();
   const completeManual = useCompleteManualRefund();
+  const rejectRefund = useRejectRefund();
 
   const items = data?.items ?? [];
   const summary = data?.summary ?? {};
 
-  const totalProcessed = summary.PROCESSED?.amount ?? 0;
+  const getSummary = (upper: string, lower: string) =>
+    summary[upper] ?? summary[lower] ?? { count: 0, amount: 0 };
+
+  const processedSummary = getSummary("PROCESSED", "processed");
+  const requestedSummary = getSummary("REQUESTED", "requested");
+  const approvedSummary = getSummary("APPROVED", "approved");
+  const processingSummary = getSummary("PROCESSING", "processing");
+  const totalProcessed = processedSummary.amount;
   const pendingCount =
-    (summary.REQUESTED?.count ?? 0) +
-    (summary.APPROVED?.count ?? 0) +
-    (summary.PROCESSING?.count ?? 0);
+    requestedSummary.count + approvedSummary.count + processingSummary.count;
 
   const columns: Column<AdminRefund>[] = [
     {
@@ -126,11 +133,48 @@ function RefundCenter() {
       header: "",
       className: "text-right",
       render: (refund) => {
-        if (
-          refund.status === "REQUESTED" ||
-          refund.status === "APPROVED" ||
-          refund.status === "FAILED"
-        ) {
+        if (refund.status === "REQUESTED" || refund.status === "APPROVED") {
+          return (
+            <div className="flex justify-end gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={rejectRefund.isPending}
+                onClick={async (event) => {
+                  event.stopPropagation();
+                  const reason = window.prompt("Reason for rejecting this refund:");
+                  if (!reason?.trim()) return;
+                  try {
+                    await rejectRefund.mutateAsync({ refundId: refund._id, reason: reason.trim() });
+                    toast.success("Refund rejected");
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : "Could not reject refund");
+                  }
+                }}
+              >
+                <XCircle className="mr-1 h-4 w-4" /> Reject
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={processRefund.isPending}
+                onClick={async (event) => {
+                  event.stopPropagation();
+                  try {
+                    await processRefund.mutateAsync(refund._id);
+                    toast.success(`Refund processing started for ${refund.orderId?.orderNumber ?? "order"}`);
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : "Could not process refund");
+                  }
+                }}
+              >
+                {processRefund.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Approve"}
+              </Button>
+            </div>
+          );
+        }
+
+        if (refund.status === "FAILED") {
           return (
             <Button
               size="sm"
@@ -140,23 +184,13 @@ function RefundCenter() {
                 event.stopPropagation();
                 try {
                   await processRefund.mutateAsync(refund._id);
-                  toast.success(
-                    `Refund processing started for ${refund.orderId?.orderNumber ?? "order"}`,
-                  );
+                  toast.success("Refund retry started");
                 } catch (err) {
-                  toast.error(
-                    err instanceof Error
-                      ? err.message
-                      : "Could not process refund",
-                  );
+                  toast.error(err instanceof Error ? err.message : "Could not retry refund");
                 }
               }}
             >
-              {processRefund.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Approve"
-              )}
+              {processRefund.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Retry"}
             </Button>
           );
         }
@@ -256,7 +290,7 @@ function RefundCenter() {
         />
         <StatCard
           label="Processed"
-          value={String(summary.PROCESSED?.count ?? 0)}
+          value={String(processedSummary.count)}
           icon={RefreshCcw}
         />
       </div>
