@@ -48,7 +48,6 @@ function RefundCenter() {
   const processRefund = useProcessRefund();
   const rejectRefund = useRejectRefund();
   const completeManual = useCompleteManualRefund();
-  const rejectRefund = useRejectRefund();
 
   const items = data?.items ?? [];
   const summary = data?.summary ?? {};
