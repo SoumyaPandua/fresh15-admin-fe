@@ -2,9 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { request, jsonBody, toList } from "./catalog";
 import { useAuth } from "./auth";
 
-// ---------------------------------------------------------------------------
-// Types — mirror the backend Offer model
-// ---------------------------------------------------------------------------
+export type OfferTargetType = "NONE" | "SEARCH" | "CATEGORY" | "PRODUCT" | "OFFER";
 
 export type ApiOffer = {
   _id: string;
@@ -12,6 +10,14 @@ export type ApiOffer = {
   description?: string;
   discount?: string;
   category?: string;
+  placement?: string;
+  ctaText?: string;
+  targetType?: OfferTargetType;
+  targetValue?: string;
+  couponCode?: string;
+  priority?: number;
+  startsAt?: string | null;
+  endsAt?: string | null;
   isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -22,18 +28,22 @@ export type OfferInput = {
   description?: string;
   discount?: string;
   category?: string;
+  placement?: string;
+  ctaText?: string;
+  targetType?: OfferTargetType;
+  targetValue?: string;
+  couponCode?: string;
+  priority?: number;
+  startsAt?: string | null;
+  endsAt?: string | null;
   isActive?: boolean;
 };
-
-// ---------------------------------------------------------------------------
-// Raw API calls
-// ---------------------------------------------------------------------------
 
 export const fetchOffers = async (token?: string | null) =>
   toList<ApiOffer>((await request<any>("/api/offer", { method: "GET" }, { token })).data);
 
 export const fetchActiveOffers = async (token?: string | null) =>
-  toList<ApiOffer>((await request<any>("/api/offer/active", { method: "GET" }, { token })).data);
+  toList<ApiOffer>((await request<any>("/api/offer/active", { method: "GET" }, { token: null, auth: false })).data);
 
 export const fetchOffer = (id: string, token?: string | null) =>
   request<ApiOffer>(`/api/offer/${id}`, { method: "GET" }, { token });
@@ -49,10 +59,6 @@ export const updateOfferStatus = (id: string, isActive: boolean, token?: string 
 
 export const deleteOffer = (id: string, token?: string | null) =>
   request<any>(`/api/offer/${id}`, { method: "DELETE" }, { token });
-
-// ---------------------------------------------------------------------------
-// Query hooks
-// ---------------------------------------------------------------------------
 
 export const offerKeys = {
   all: ["offers"] as const,

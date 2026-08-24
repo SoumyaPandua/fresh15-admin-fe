@@ -2,9 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { request, jsonBody, toList } from "./catalog";
 import { useAuth } from "./auth";
 
-// ---------------------------------------------------------------------------
-// Types — mirror the backend Banner model
-// ---------------------------------------------------------------------------
+export type BannerTargetType = "NONE" | "SEARCH" | "CATEGORY" | "PRODUCT" | "OFFER";
 
 export type ApiBanner = {
   _id: string;
@@ -12,6 +10,12 @@ export type ApiBanner = {
   subtitle?: string;
   placement?: string;
   image?: string;
+  ctaText?: string;
+  targetType?: BannerTargetType;
+  targetValue?: string;
+  priority?: number;
+  startsAt?: string | null;
+  endsAt?: string | null;
   isActive?: boolean;
   isDeleted?: boolean;
   createdAt?: string;
@@ -22,6 +26,12 @@ export type BannerInput = {
   title: string;
   subtitle?: string;
   placement?: string;
+  ctaText?: string;
+  targetType?: BannerTargetType;
+  targetValue?: string;
+  priority?: number;
+  startsAt?: string | null;
+  endsAt?: string | null;
   isActive?: boolean;
   image?: File | null;
 };
@@ -31,15 +41,16 @@ function bannerForm(input: Partial<BannerInput>): FormData {
   if (input.title !== undefined) fd.append("title", input.title);
   if (input.subtitle !== undefined) fd.append("subtitle", input.subtitle);
   if (input.placement !== undefined) fd.append("placement", input.placement);
+  if (input.ctaText !== undefined) fd.append("ctaText", input.ctaText);
+  if (input.targetType !== undefined) fd.append("targetType", input.targetType);
+  if (input.targetValue !== undefined) fd.append("targetValue", input.targetValue);
+  if (input.priority !== undefined) fd.append("priority", String(input.priority));
+  if (input.startsAt) fd.append("startsAt", input.startsAt);
+  if (input.endsAt) fd.append("endsAt", input.endsAt);
   if (input.isActive !== undefined) fd.append("isActive", String(input.isActive));
-  // Only send the file when a new one was picked — the backend keeps the old image otherwise.
   if (input.image) fd.append("image", input.image);
   return fd;
 }
-
-// ---------------------------------------------------------------------------
-// Raw API calls
-// ---------------------------------------------------------------------------
 
 export const fetchBanners = async (token?: string | null) =>
   toList<ApiBanner>((await request<any>("/api/banner", { method: "GET" }, { token })).data);
@@ -55,10 +66,6 @@ export const updateBannerStatus = (id: string, isActive: boolean, token?: string
 
 export const deleteBanner = (id: string, token?: string | null) =>
   request<any>(`/api/banner/${id}`, { method: "DELETE" }, { token });
-
-// ---------------------------------------------------------------------------
-// Query hooks
-// ---------------------------------------------------------------------------
 
 export const bannerKeys = {
   all: ["banners"] as const,

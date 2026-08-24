@@ -8,7 +8,7 @@ import { useAdminAuditLogs, type ApiAuditLog } from "@/lib/audit-api";
 import { Card } from "@/components/ui/card";
 
 export const Route = createFileRoute("/audit-logs")({
-  head: () => ({ meta: [{ title: "Audit Logs — Fresh15 Admin" }, { name: "description", content: "Immutable log of every admin action." }] }),
+  head: () => ({ meta: [{ title: "Audit Logs — Fresh15 Admin" }, { name: "description", content: "Application audit trail for security, operations and compliance." }] }),
   component: AuditLogsPage,
 });
 
@@ -17,15 +17,21 @@ function AuditLogsPage() {
 
   const columns: Column<ApiAuditLog>[] = [
     { key: "when", header: "When", render: (l) => <span className="text-xs text-muted-foreground">{dateTime(l.at)}</span> },
-    { key: "actor", header: "Actor", render: (l) => <span className="text-sm font-medium">{l.actor}</span> },
+    { key: "actor", header: "Actor", render: (l) => <div><div className="text-sm font-medium">{l.actor}</div><div className="text-[10px] text-muted-foreground">{l.actorRole || "SYSTEM"}</div></div> },
     { key: "action", header: "Action", render: (l) => <span className="text-sm">{l.action}</span> },
     { key: "target", header: "Target", render: (l) => <span className="font-mono text-xs">{l.target}</span> },
     { key: "ip", header: "IP", render: (l) => <span className="font-mono text-xs text-muted-foreground">{l.ip}</span> },
+    { key: "location", header: "Location", render: (l) => <span className="text-xs text-muted-foreground">{[l.geo?.city, l.geo?.region, l.geo?.country].filter(Boolean).join(", ") || "—"}</span> },
+    { key: "result", header: "Result", render: (l) => <span className={"text-xs font-semibold " + (l.outcome === "FAILURE" ? "text-destructive" : "text-success")}>{l.outcome || "UNKNOWN"}{l.statusCode ? ` · ${l.statusCode}` : ""}</span> },
   ];
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Audit Logs" description="Immutable log of every admin action for compliance and security." />
+      <PageHeader title="Audit Logs" description="Track important application actions with actor, IP, request and outcome context." />
+
+      <Card className="p-4 text-xs text-muted-foreground">
+        IP is captured server-side. Location is optional coarse geolocation from trusted deployment headers when available; Fresh15 does not derive or store exact GPS coordinates for audit records.
+      </Card>
 
       {isLoading ? (
         <Card className="h-96 animate-pulse" />
@@ -38,7 +44,7 @@ function AuditLogsPage() {
         <DataTable
           data={data?.items ?? []}
           columns={columns}
-          searchable={(l) => `${l.actor} ${l.action} ${l.target} ${l.ip} ${l.resourceType ?? ""}`}
+          searchable={(l) => `${l.actor} ${l.action} ${l.target} ${l.ip} ${l.path ?? ""} ${l.requestId ?? ""} ${l.geo?.city ?? ""} ${l.geo?.country ?? ""}`}
           pageSize={15}
           bulkActions={false}
         />
