@@ -1,4 +1,5 @@
 "use client";
+
 import { createFileRoute, Link } from "@/lib/next-router-compat";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { StatCard } from "@/components/admin/StatCard";
@@ -6,7 +7,7 @@ import { DeliveryStats } from "@/components/admin/DeliveryStats";
 import { StatusBadge, orderStatusTone } from "@/components/admin/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ORDERS, CUSTOMERS, PARTNERS, PRODUCTS, REVENUE_SERIES, CATEGORY_MIX, HOURLY_ORDERS, customerById } from "@/lib/mock-data";
+import { useAdminDashboard } from "@/lib/dashboard-api";
 import { inr, num, relTime } from "@/lib/format";
 import { ShoppingBag, TrendingUp, Users, Truck, Plus, ArrowUpRight, Package, Sparkles } from "lucide-react";
 import {
@@ -20,14 +21,52 @@ export const Route = createFileRoute("/")({
 });
 
 function Dashboard() {
-  const totalRevenue = REVENUE_SERIES.reduce((s, d) => s + d.revenue, 0);
-  const totalOrders = REVENUE_SERIES.reduce((s, d) => s + d.orders, 0);
-  const activePartners = PARTNERS.filter(p => p.status !== "offline").length;
-  const liveOrders = ORDERS.filter(o => o.status === "live");
-  const pendingOrders = ORDERS.filter(o => o.status === "pending");
-  const recent = [...ORDERS].sort((a,b) => +new Date(b.createdAt) - +new Date(a.createdAt)).slice(0, 6);
-  const topProducts = [...PRODUCTS].sort((a,b) => b.sold - a.sold).slice(0, 5);
-  const chartColors = ["var(--chart-1)","var(--chart-2)","var(--chart-3)","var(--chart-4)","var(--chart-5)","var(--info)"];
+  const { data, isLoading, error } = useAdminDashboard();
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Good morning, Aarav 👋"
+          description="Here's what's happening across Fresh15 today."
+        />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
+            <Card key={i} className="h-[104px] animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Good morning, Aarav 👋"
+          description="Here's what's happening across Fresh15 today."
+        />
+        <Card className="p-5">
+          <div className="text-sm font-semibold">Unable to load dashboard</div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            {error instanceof Error ? error.message : "Please try again."}
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  const {
+    overview,
+    revenueSeries,
+    categoryMix,
+    hourlyOrders,
+    latestOrders,
+    topSellingProducts,
+  } = data;
+
+  const recent = latestOrders.slice(0, 6);
+  const chartColors = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)", "var(--info)"];
 
   return (
     <div className="space-y-6">
@@ -43,14 +82,13 @@ function Dashboard() {
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Revenue (30d)" value={inr(totalRevenue)} delta={12.4} icon={TrendingUp} tone="success" hint="vs last month" />
-        <StatCard label="Orders (30d)" value={num(totalOrders)} delta={8.1} icon={ShoppingBag} tone="info" hint="vs last month" />
-        <StatCard label="Active customers" value={num(CUSTOMERS.filter(c => c.status !== 'inactive').length)} delta={4.2} icon={Users} tone="default" hint="last 30 days" />
-        <StatCard label="Delivery partners online" value={`${activePartners} / ${PARTNERS.length}`} delta={-1.6} icon={Truck} tone="warning" hint="right now" />
+        <StatCard label="Revenue (30d)" value={inr(overview.totalRevenue)} delta={12.4} icon={TrendingUp} tone="success" hint="vs last month" />
+        <StatCard label="Orders (30d)" value={num(overview.totalOrders)} delta={8.1} icon={ShoppingBag} tone="info" hint="vs last month" />
+        <StatCard label="Active customers" value={num(overview.activeCustomers)} delta={4.2} icon={Users} tone="default" hint="last 30 days" />
+        <StatCard label="Delivery partners online" value={`${overview.activePartners} / ${overview.totalPartners}`} delta={-1.6} icon={Truck} tone="warning" hint="right now" />
       </div>
 
       <DeliveryStats />
-
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="p-5 lg:col-span-2 gap-4">
@@ -60,14 +98,14 @@ function Dashboard() {
               <div className="text-xs text-muted-foreground">Last 30 days</div>
             </div>
             <div className="flex gap-1 rounded-lg bg-muted p-0.5 text-xs">
-              {["7d","30d","90d"].map((r,i) => (
-                <button key={r} className={`rounded-md px-2.5 py-1 font-medium ${i===1 ? "bg-background shadow-sm" : "text-muted-foreground"}`}>{r}</button>
+              {["7d", "30d", "90d"].map((r, i) => (
+                <button key={r} className={`rounded-md px-2.5 py-1 font-medium ${i === 1 ? "bg-background shadow-sm" : "text-muted-foreground"}`}>{r}</button>
               ))}
             </div>
           </div>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={REVENUE_SERIES} margin={{ left: 0, right: 8, top: 8 }}>
+              <AreaChart data={revenueSeries} margin={{ left: 0, right: 8, top: 8 }}>
                 <defs>
                   <linearGradient id="rev" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.35} />
@@ -76,7 +114,7 @@ function Dashboard() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="date" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} tickFormatter={(v) => v.slice(5)} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${(v/1000).toFixed(0)}k`} width={48} />
+                <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} width={48} />
                 <Tooltip contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 12, fontSize: 12 }}
                   formatter={(v: number) => inr(v)} />
                 <Area type="monotone" dataKey="revenue" stroke="var(--chart-1)" strokeWidth={2} fill="url(#rev)" />
@@ -93,15 +131,15 @@ function Dashboard() {
           <div className="h-52">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={CATEGORY_MIX} innerRadius={50} outerRadius={80} paddingAngle={2} dataKey="value" stroke="none">
-                  {CATEGORY_MIX.map((_, i) => <Cell key={i} fill={chartColors[i % chartColors.length]} />)}
+                <Pie data={categoryMix} innerRadius={50} outerRadius={80} paddingAngle={2} dataKey="value" stroke="none">
+                  {categoryMix.map((_, i) => <Cell key={i} fill={chartColors[i % chartColors.length]} />)}
                 </Pie>
                 <Tooltip contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 12, fontSize: 12 }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
           <div className="space-y-1.5">
-            {CATEGORY_MIX.map((c, i) => (
+            {categoryMix.map((c, i) => (
               <div key={c.name} className="flex items-center gap-2 text-xs">
                 <span className="h-2 w-2 rounded-full" style={{ background: chartColors[i % chartColors.length] }} />
                 <span className="flex-1 truncate">{c.name}</span>
@@ -125,21 +163,22 @@ function Dashboard() {
           </div>
           <div className="divide-y">
             {recent.map((o) => {
-              const c = customerById(o.customerId);
+              const customer = o.userId;
+              const status = mapOrderStatus(o.orderStatus);
               return (
-                <Link key={o.id} to="/orders" className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-3 hover:bg-muted/40 -mx-2 px-2 rounded-lg transition-colors">
+                <Link key={o._id} to="/orders" className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-3 hover:bg-muted/40 -mx-2 px-2 rounded-lg transition-colors">
                   <div className="flex min-w-0 items-center gap-3">
-                    <img src={c?.avatar} className="h-9 w-9 shrink-0 rounded-full" alt="" />
+                    <img src={customer?.profileImage || "https://i.pravatar.cc/64?img=15"} className="h-9 w-9 shrink-0 rounded-full" alt="" />
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-medium">{c?.name}</div>
+                      <div className="truncate text-sm font-medium">{customer?.name || "Customer"}</div>
                       <div className="truncate text-xs text-muted-foreground">
-                        {o.number} · {o.items.length} items · {relTime(o.createdAt)}
+                        {o.orderNumber || o._id} · {(o.items || []).length} items · {o.createdAt ? relTime(o.createdAt) : "recently"}
                       </div>
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
-                    <span className="number text-sm font-semibold">{inr(o.total)}</span>
-                    <StatusBadge label={o.status} tone={orderStatusTone(o.status)} />
+                    <span className="number text-sm font-semibold">{inr(o.grandTotal || 0)}</span>
+                    <StatusBadge label={status} tone={orderStatusTone(status)} />
                   </div>
                 </Link>
               );
@@ -154,23 +193,23 @@ function Dashboard() {
           </div>
           <div className="h-52">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={HOURLY_ORDERS}>
+              <BarChart data={hourlyOrders}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="hour" tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} interval={3} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} width={28} />
                 <Tooltip contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 12, fontSize: 12 }} />
-                <Bar dataKey="orders" fill="var(--chart-1)" radius={[6,6,0,0]} />
+                <Bar dataKey="orders" fill="var(--chart-1)" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="rounded-lg bg-[color:var(--warning)]/10 p-3">
               <div className="text-muted-foreground">Pending</div>
-              <div className="number text-lg font-semibold text-[color:var(--warning)]">{pendingOrders.length}</div>
+              <div className="number text-lg font-semibold text-[color:var(--warning)]">{overview.pendingOrders}</div>
             </div>
             <div className="rounded-lg bg-[color:var(--info)]/10 p-3">
               <div className="text-muted-foreground">Live</div>
-              <div className="number text-lg font-semibold text-[color:var(--info)]">{liveOrders.length}</div>
+              <div className="number text-lg font-semibold text-[color:var(--info)]">{overview.liveOrders}</div>
             </div>
           </div>
         </Card>
@@ -188,10 +227,10 @@ function Dashboard() {
             </Link>
           </div>
           <div className="space-y-3">
-            {topProducts.map((p, i) => (
+            {topSellingProducts.map((p, i) => (
               <div key={p.id} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
                 <span className="number w-5 text-center text-xs font-semibold text-muted-foreground">{i + 1}</span>
-                <img src={p.image} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
+                <img src={p.image || "https://picsum.photos/seed/f15-product/80"} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
                 <div className="min-w-0 -ml-1">
                   <div className="truncate text-sm font-medium">{p.name}</div>
                   <div className="text-xs text-muted-foreground">{num(p.sold)} sold · {p.stock} in stock</div>
@@ -227,4 +266,20 @@ function Dashboard() {
       </div>
     </div>
   );
+}
+
+function mapOrderStatus(status?: string) {
+  switch ((status || "").toUpperCase()) {
+    case "DELIVERED":
+      return "completed";
+    case "CANCELLED":
+      return "cancelled";
+    case "OUT_FOR_DELIVERY":
+    case "READY_FOR_PICKUP":
+    case "PACKING":
+    case "CONFIRMED":
+      return "live";
+    default:
+      return "pending";
+  }
 }
