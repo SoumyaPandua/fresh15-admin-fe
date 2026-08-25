@@ -3,16 +3,29 @@ import { API_BASE_URL } from "./auth";
 export type AiMessage = {
   role: "user" | "assistant";
   content: string;
+  blocked?: boolean;
+  createdAt?: string;
+};
+
+export type AiConversation = {
+  _id: string;
+  title: string;
+  messages: AiMessage[];
+  messageCount: number;
+  lastActivityAt: string;
+  createdAt: string;
 };
 
 export type AiChatResponse = {
+  conversationId: string;
   reply: string;
-  conversationId?: string;
+  blocked: boolean;
 };
 
 export async function sendAiMessage(
   token: string,
-  messages: AiMessage[],
+  message: string,
+  conversationId?: string,
 ): Promise<AiChatResponse> {
   const response = await fetch(`${API_BASE_URL}/api/ai/chat`, {
     method: "POST",
@@ -21,7 +34,10 @@ export async function sendAiMessage(
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({
+      message,
+      conversationId,
+    }),
     cache: "no-store",
   });
 
@@ -39,24 +55,22 @@ export async function sendAiMessage(
       : null;
 
   if (!response.ok || body?.success === false) {
-    const message =
+    const messageText =
       typeof body?.message === "string"
         ? body.message
         : `AI request failed (${response.status})`;
 
-    throw new Error(message);
+    throw new Error(messageText);
   }
 
   const data =
     body?.data && typeof body.data === "object"
       ? (body.data as Record<string, unknown>)
-      : body;
+      : {};
 
   return {
-    reply: String(data?.reply ?? data?.message ?? ""),
-    conversationId:
-      typeof data?.conversationId === "string"
-        ? data.conversationId
-        : undefined,
+    conversationId: String(data.conversationId ?? ""),
+    reply: String(data.reply ?? data.message ?? ""),
+    blocked: Boolean(data.blocked),
   };
 }

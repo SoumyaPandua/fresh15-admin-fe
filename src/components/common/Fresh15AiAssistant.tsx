@@ -6,107 +6,102 @@ import { useAuth } from "@/lib/auth";
 import { sendAiMessage, type AiMessage } from "@/lib/ai-chat-api";
 import { toast } from "sonner";
 
+const starter: AiMessage[] = [
+  {
+    role: "assistant",
+    content:
+      "Hi! I’m Fresh15 AI. I can help with Fresh15 products, offers, cart, orders, delivery, refunds, payments and grocery suggestions.",
+  },
+];
+
 export function Fresh15AiAssistant() {
   const { token } = useAuth();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
-  const [sending, setSending] = useState(false);
-  const [messages, setMessages] = useState<AiMessage[]>([
-    {
-      role: "assistant",
-      content:
-        "Hi! I'm Fresh15 AI. I can help with Fresh15-related questions. Please don't share passwords, OTPs, tokens, or other secrets.",
-    },
-  ]);
-  const listRef = useRef<HTMLDivElement | null>(null);
+  const [messages, setMessages] = useState<AiMessage[]>(starter);
+  const [conversationId, setConversationId] = useState<string>();
+  const [loading, setLoading] = useState(false);
+  const endRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const node = listRef.current;
-    if (node) {
-      node.scrollTop = node.scrollHeight;
-    }
-  }, [messages, open]);
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
+
+  if (!token) return null;
+
+  const authenticatedToken = token;
 
   async function submit() {
     const text = input.trim();
-    if (!text || sending) return;
 
-    const authenticatedToken = token;
+    if (!text || loading) return;
 
-    if (!authenticatedToken) {
-      toast.error("Please sign in to use Fresh15 AI.");
-      return;
-    }
-
-    const nextMessages: AiMessage[] = [
-      ...messages,
-      { role: "user", content: text },
-    ];
-
-    setMessages(nextMessages);
     setInput("");
-    setSending(true);
+    setMessages((current) => [
+      ...current,
+      { role: "user", content: text },
+    ]);
+    setLoading(true);
 
     try {
-      const result = await sendAiMessage(
+      const response = await sendAiMessage(
         authenticatedToken,
-        nextMessages,
+        text,
+        conversationId,
       );
+
+      setConversationId(response.conversationId);
 
       setMessages((current) => [
         ...current,
         {
           role: "assistant",
-          content: result.reply,
+          content: response.reply,
+          blocked: response.blocked,
         },
       ]);
     } catch (error) {
-      setMessages((current) => current.slice(0, -1));
-
       toast.error(
         error instanceof Error
           ? error.message
-          : "Unable to reach Fresh15 AI.",
+          : "AI assistant is unavailable",
       );
     } finally {
-      setSending(false);
+      setLoading(false);
     }
   }
-
-  if (!token) return null;
 
   return (
     <>
       <button
         type="button"
         aria-label="Open Fresh15 AI"
-        onClick={() => setOpen((value) => !value)}
-        className="fixed bottom-5 right-5 z-[70] grid h-14 w-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-xl transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+        onClick={() => setOpen(true)}
+        className="group fixed bottom-6 right-6 z-[70] flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-xl transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-primary/20"
       >
-        <span className="relative">
-          <Bot className="h-6 w-6" />
-          <Sparkles className="absolute -right-3 -top-3 h-3.5 w-3.5 animate-pulse" />
+        <span className="relative grid h-5 w-5 place-items-center">
+          <Bot className="h-5 w-5 transition-transform duration-500 group-hover:rotate-12" />
+          <Sparkles className="absolute -right-2 -top-2 h-3 w-3 animate-pulse" />
         </span>
+        Fresh15 AI
       </button>
 
       {open && (
-        <section
-          aria-label="Fresh15 AI assistant"
-          className="fixed bottom-20 right-5 z-[70] flex h-[min(620px,calc(100vh-110px))] w-[min(390px,calc(100vw-32px))] flex-col overflow-hidden rounded-3xl border bg-background shadow-2xl"
+        <div
+          className="fixed inset-x-3 bottom-4 z-[70] flex h-[min(680px,78dvh)] max-h-[78dvh] flex-col overflow-hidden rounded-3xl border bg-background shadow-2xl sm:inset-x-auto sm:bottom-6 sm:right-6 sm:w-[390px]"
           onWheel={(event) => event.stopPropagation()}
           onTouchMove={(event) => event.stopPropagation()}
         >
-          <header className="flex items-center justify-between border-b px-4 py-3">
-            <div className="flex items-center gap-2">
-              <div className="grid h-9 w-9 place-items-center rounded-full bg-primary/10 text-primary">
+          <div className="flex shrink-0 items-center justify-between border-b bg-card px-4 py-3">
+            <div className="flex items-center gap-3">
+              <span className="grid h-9 w-9 place-items-center rounded-full bg-primary/10 text-primary">
                 <Bot className="h-5 w-5" />
-              </div>
-
+              </span>
               <div>
-                <div className="font-bold">Fresh15 AI</div>
-                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                  <ShieldCheck className="h-3 w-3" />
-                  Secure assistant
+                <div className="font-black">Fresh15 AI</div>
+                <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Fresh15 customer-safe assistant
                 </div>
               </div>
             </div>
@@ -117,42 +112,47 @@ export function Fresh15AiAssistant() {
               onClick={() => setOpen(false)}
               className="rounded-full p-2 hover:bg-muted"
             >
-              <X className="h-4 w-4" />
+              <X className="h-5 w-5" />
             </button>
-          </header>
+          </div>
 
           <div
-            ref={listRef}
-            className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4"
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3"
+            onWheel={(event) => event.stopPropagation()}
+            onTouchMove={(event) => event.stopPropagation()}
           >
-            {messages.map((message, index) => (
-              <div
-                key={`${message.role}-${index}`}
-                className={`flex ${
-                  message.role === "user"
-                    ? "justify-end"
-                    : "justify-start"
-                }`}
-              >
+            <div className="space-y-3">
+              {messages.map((message, index) => (
                 <div
-                  className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${
+                  key={`${index}-${message.role}`}
+                  className={`flex ${
                     message.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-foreground"
+                      ? "justify-end"
+                      : "justify-start"
                   }`}
                 >
-                  {message.content}
+                  <div
+                    className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm ${
+                      message.role === "user"
+                        ? "rounded-br-md bg-primary text-primary-foreground"
+                        : "rounded-bl-md bg-muted"
+                    }`}
+                  >
+                    {message.content}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
 
-            {sending && (
-              <div className="flex justify-start">
-                <div className="rounded-2xl bg-muted px-3 py-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
+              {loading && (
+                <div className="flex justify-start">
+                  <div className="rounded-2xl bg-muted px-3 py-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+
+              <div ref={endRef} />
+            </div>
           </div>
 
           <form
@@ -160,31 +160,44 @@ export function Fresh15AiAssistant() {
               event.preventDefault();
               void submit();
             }}
-            className="flex gap-2 border-t p-3"
+            className="shrink-0 border-t bg-card p-3"
           >
-            <input
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              placeholder="Ask about Fresh15..."
-              maxLength={1000}
-              disabled={sending}
-              className="min-w-0 flex-1 rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-            />
+            <div className="flex items-end gap-2">
+              <textarea
+                value={input}
+                onChange={(event) =>
+                  setInput(event.target.value.slice(0, 1200))
+                }
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    void submit();
+                  }
+                }}
+                rows={1}
+                placeholder="Ask about Fresh15..."
+                className="max-h-28 min-h-10 flex-1 resize-none rounded-2xl border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
+              />
 
-            <button
-              type="submit"
-              disabled={sending || !input.trim()}
-              aria-label="Send message"
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground disabled:opacity-50"
-            >
-              {sending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </button>
+              <button
+                disabled={!input.trim() || loading}
+                type="submit"
+                aria-label="Send message"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground disabled:opacity-50"
+              >
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+
+            <div className="mt-2 text-[10px] text-muted-foreground">
+              Chats may be stored for support, safety and product improvement.
+            </div>
           </form>
-        </section>
+        </div>
       )}
     </>
   );
