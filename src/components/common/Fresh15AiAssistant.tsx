@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Bot, Send, X, Loader2, ShieldCheck, Sparkles } from "lucide-react";
-import { useAuth } from "@/lib/auth";
-import { sendAiMessage, type AiMessage } from "@/lib/ai-chat-api";
+import { useAuth } from "./@/lib/auth";
+import { sendAiMessage, type AiMessage } from "./ai-chat-api";
 import { toast } from "sonner";
 
 const starter: AiMessage[] = [
