@@ -1,4 +1,4 @@
-import { API_BASE } from "./api-client";
+import { API_BASE_URL } from "./auth";
 
 export type AiMessage = {
   role: "user" | "assistant";
@@ -14,7 +14,7 @@ export async function sendAiMessage(
   token: string,
   messages: AiMessage[],
 ): Promise<AiChatResponse> {
-  const response = await fetch(`${API_BASE}/api/ai/chat`, {
+  const response = await fetch(`${API_BASE_URL}/api/ai/chat`, {
     method: "POST",
     headers: {
       Accept: "application/json",
@@ -25,7 +25,7 @@ export async function sendAiMessage(
     cache: "no-store",
   });
 
-  let payload: any = null;
+  let payload: unknown = null;
 
   try {
     payload = await response.json();
@@ -33,16 +33,30 @@ export async function sendAiMessage(
     payload = null;
   }
 
-  if (!response.ok || payload?.success === false) {
-    throw new Error(
-      payload?.message || `AI request failed (${response.status})`,
-    );
+  const body =
+    payload && typeof payload === "object"
+      ? (payload as Record<string, unknown>)
+      : null;
+
+  if (!response.ok || body?.success === false) {
+    const message =
+      typeof body?.message === "string"
+        ? body.message
+        : `AI request failed (${response.status})`;
+
+    throw new Error(message);
   }
 
-  const data = payload?.data ?? payload;
+  const data =
+    body?.data && typeof body.data === "object"
+      ? (body.data as Record<string, unknown>)
+      : body;
 
   return {
     reply: String(data?.reply ?? data?.message ?? ""),
-    conversationId: data?.conversationId,
+    conversationId:
+      typeof data?.conversationId === "string"
+        ? data.conversationId
+        : undefined,
   };
 }

@@ -22,7 +22,9 @@ export function Fresh15AiAssistant() {
 
   useEffect(() => {
     const node = listRef.current;
-    if (node) node.scrollTop = node.scrollHeight;
+    if (node) {
+      node.scrollTop = node.scrollHeight;
+    }
   }, [messages, open]);
 
   async function submit() {
@@ -30,6 +32,7 @@ export function Fresh15AiAssistant() {
     if (!text || sending) return;
 
     const authenticatedToken = token;
+
     if (!authenticatedToken) {
       toast.error("Please sign in to use Fresh15 AI.");
       return;
@@ -45,13 +48,21 @@ export function Fresh15AiAssistant() {
     setSending(true);
 
     try {
-      const result = await sendAiMessage(authenticatedToken, nextMessages);
+      const result = await sendAiMessage(
+        authenticatedToken,
+        nextMessages,
+      );
+
       setMessages((current) => [
         ...current,
-        { role: "assistant", content: result.reply },
+        {
+          role: "assistant",
+          content: result.reply,
+        },
       ]);
     } catch (error) {
       setMessages((current) => current.slice(0, -1));
+
       toast.error(
         error instanceof Error
           ? error.message
@@ -90,6 +101,7 @@ export function Fresh15AiAssistant() {
               <div className="grid h-9 w-9 place-items-center rounded-full bg-primary/10 text-primary">
                 <Bot className="h-5 w-5" />
               </div>
+
               <div>
                 <div className="font-bold">Fresh15 AI</div>
                 <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
@@ -117,7 +129,9 @@ export function Fresh15AiAssistant() {
               <div
                 key={`${message.role}-${index}`}
                 className={`flex ${
-                  message.role === "user" ? "justify-end" : "justify-start"
+                  message.role === "user"
+                    ? "justify-end"
+                    : "justify-start"
                 }`}
               >
                 <div
