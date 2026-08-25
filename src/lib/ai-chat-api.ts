@@ -1,60 +1,40 @@
-import { apiRequest } from "@/lib/api-client";
+import { API_BASE_URL } from "./auth";
 
 export type AiMessage = {
   role: "user" | "assistant";
   content: string;
-  blocked?: boolean;
 };
 
-export type AiChatResult = {
-  conversationId: string;
+export type AiChatResponse = {
   reply: string;
-  blocked?: boolean;
+  conversationId?: string;
 };
 
 export async function sendAiMessage(
   token: string,
-  message: string,
-  conversationId?: string,
-) {
-  return (
-    await apiRequest<AiChatResult>(
-      "/api/ai/chat",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          message,
-          ...(conversationId ? { conversationId } : {}),
-        }),
-      },
-      token,
-    )
-  ).data;
-}
+  messages: AiMessage[],
+): Promise<AiChatResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/ai/chat`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ messages }),
+  });
 
-export async function listAiConversations(token: string) {
-  return (
-    await apiRequest<
-      Array<{
-        _id: string;
-        title: string;
-        messageCount: number;
-        lastActivityAt: string;
-        createdAt: string;
-      }>
-    >("/api/ai/conversations", {}, token)
-  ).data;
-}
+  let payload: any = null;
+  try {
+    payload = await response.json();
+  } catch {}
 
-export async function getAiConversation(token: string, id: string) {
-  return (
-    await apiRequest<{
-      _id: string;
-      title: string;
-      messages: AiMessage[];
-      messageCount: number;
-      lastActivityAt: string;
-      createdAt: string;
-    }>(`/api/ai/conversations/${id}`, {}, token)
-  ).data;
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.message || `AI request failed (${response.status})`);
+  }
+
+  const data = payload?.data ?? payload;
+  return {
+    reply: String(data?.reply ?? data?.message ?? ""),
+    conversationId: data?.conversationId,
+  };
 }
