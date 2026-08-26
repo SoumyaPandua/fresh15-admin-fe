@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Bot, Send, X, Loader2, ShieldCheck, Sparkles } from "lucide-react";
+import { Bot, Send, X, Loader2, ShieldCheck, Sparkles, WandSparkles } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { sendAiMessage, type AiMessage } from "@/lib/ai-chat-api";
+import { sendAiAgent } from "@/lib/ai-agent-api";
 import { toast } from "sonner";
 
 const starter: AiMessage[] = [
