@@ -77,7 +77,7 @@ export function Fresh15AiAssistant() {
         type="button"
         aria-label="Open Fresh15 AI"
         onClick={() => setOpen(true)}
-        className="group fixed bottom-6 right-6 z-[70] flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-xl transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-primary/20"
+        className="group fixed bottom-[72px] right-6 z-[70] flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-xl transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-primary/20"
       >
         <span className="relative grid h-5 w-5 place-items-center">
           <Bot className="h-5 w-5 transition-transform duration-500 group-hover:rotate-12" />

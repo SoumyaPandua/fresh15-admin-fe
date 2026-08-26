@@ -7,6 +7,7 @@ import { AppSidebar } from "@/components/admin/AppSidebar";
 import { TopBar } from "@/components/admin/TopBar";
 import { useAuth } from "@/lib/auth";
 import { Fresh15AiAssistant } from "@/components/common/Fresh15AiAssistant";
+import { Fresh15AiAgent } from "@/components/common/Fresh15AiAgent";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "/";
@@ -42,6 +43,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </SidebarInset>
       </div>
       <Fresh15AiAssistant />
+      <Fresh15AiAgent />
     </SidebarProvider>
   );
 }
