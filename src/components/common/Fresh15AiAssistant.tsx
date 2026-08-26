@@ -1,10 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Bot, Send, X, Loader2, ShieldCheck, Sparkles, WandSparkles } from "lucide-react";
+import {
+  Bot,
+  Send,
+  X,
+  Loader2,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { sendAiMessage, type AiMessage } from "@/lib/ai-chat-api";
-import { sendAiAgent } from "@/lib/ai-agent-api";
 import { toast } from "sonner";
 
 const starter: AiMessage[] = [
@@ -34,7 +40,6 @@ export function Fresh15AiAssistant() {
 
   async function submit() {
     const text = input.trim();
-
     if (!text || loading) return;
 
     setInput("");
@@ -78,7 +83,7 @@ export function Fresh15AiAssistant() {
         type="button"
         aria-label="Open Fresh15 AI"
         onClick={() => setOpen(true)}
-        className="group fixed bottom-[72px] right-6 z-[70] flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-xl transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-primary/20"
+        className="group fixed bottom-[84px] right-6 z-[70] flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-xl transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-primary/20"
       >
         <span className="relative grid h-5 w-5 place-items-center">
           <Bot className="h-5 w-5 transition-transform duration-500 group-hover:rotate-12" />
@@ -102,11 +107,10 @@ export function Fresh15AiAssistant() {
                 <div className="font-black">Fresh15 AI</div>
                 <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
                   <ShieldCheck className="h-3.5 w-3.5" />
-                  Fresh15 customer-safe assistant
+                  Customer-safe assistant
                 </div>
               </div>
             </div>
-
             <button
               type="button"
               aria-label="Close Fresh15 AI"
@@ -127,9 +131,7 @@ export function Fresh15AiAssistant() {
                 <div
                   key={`${index}-${message.role}`}
                   className={`flex ${
-                    message.role === "user"
-                      ? "justify-end"
-                      : "justify-start"
+                    message.role === "user" ? "justify-end" : "justify-start"
                   }`}
                 >
                   <div
@@ -179,7 +181,6 @@ export function Fresh15AiAssistant() {
                 placeholder="Ask about Fresh15..."
                 className="max-h-28 min-h-10 flex-1 resize-none rounded-2xl border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
               />
-
               <button
                 disabled={!input.trim() || loading}
                 type="submit"
@@ -193,7 +194,6 @@ export function Fresh15AiAssistant() {
                 )}
               </button>
             </div>
-
             <div className="mt-2 text-[10px] text-muted-foreground">
               Chats may be stored for support, safety and product improvement.
             </div>
