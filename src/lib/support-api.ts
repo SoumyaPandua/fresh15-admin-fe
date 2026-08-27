@@ -44,7 +44,7 @@ const addMessage = (token: string, id: string, message: string) =>
   }, { token });
 
 export function useSupportTickets() {
-  const token = useAuth((s) => s.token);
+  const { token } = useAuth();
   return useQuery({
     queryKey: ["support-tickets", token],
     queryFn: () => list(token as string).then((res) => res.data),
@@ -54,7 +54,7 @@ export function useSupportTickets() {
 }
 
 export function useSupportTicket(id: string | null) {
-  const token = useAuth((s) => s.token);
+  const { token } = useAuth();
   return useQuery({
     queryKey: ["support-ticket", token, id],
     queryFn: () => get(token as string, id as string).then((res) => res.data),
@@ -64,7 +64,7 @@ export function useSupportTicket(id: string | null) {
 }
 
 export function useSupportMutations() {
-  const token = useAuth((s) => s.token);
+  const { token } = useAuth();
   const qc = useQueryClient();
 
   const invalidate = (id?: string) => {
