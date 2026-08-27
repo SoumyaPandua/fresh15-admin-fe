@@ -1,4 +1,6 @@
 "use client";
+
+import { useState } from "react";
 import { createFileRoute } from "@/lib/next-router-compat";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { DataTable, FilterChip, type Column } from "@/components/admin/DataTable";
@@ -8,150 +10,146 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { TICKETS as SEED, type Ticket } from "@/lib/mock-data";
-import { relTime, dateTime } from "@/lib/format";
-import { LifeBuoy, CheckCircle2, Clock, Plus, MoreHorizontal, CheckCheck, MessageSquare } from "lucide-react";
-import { useState } from "react";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { LifeBuoy, CheckCircle2, Clock, MoreHorizontal, CheckCheck, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
+import { dateTime, relTime } from "@/lib/format";
+import { useSupportMutations, useSupportTicket, useSupportTickets, type SupportStatus, type SupportTicket } from "@/lib/support-api";
 
 export const Route = createFileRoute("/support")({
-  head: () => ({ meta: [{ title: "Support Tickets — Fresh15 Admin" }, { name: "description", content: "Customer support inbox and ticket resolution." }] }),
+  head: () => ({ meta: [{ title: "Support Tickets — Fresh15 Admin" }] }),
   component: SupportPage,
 });
 
+const statuses: SupportStatus[] = ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"];
+
+const tone = (status: SupportStatus) =>
+  status === "OPEN" ? "warning" : status === "IN_PROGRESS" ? "info" : status === "RESOLVED" ? "success" : "neutral";
+
 function SupportPage() {
-  const [tickets, setTickets] = useState<Ticket[]>(SEED);
-  const [filter, setFilter] = useState<string | null>(null);
-  const [openTicket, setOpenTicket] = useState<Ticket | null>(null);
+  const [filter, setFilter] = useState<SupportStatus | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [reply, setReply] = useState("");
-  const [openNew, setOpenNew] = useState(false);
-  const [draft, setDraft] = useState<Partial<Ticket>>({ subject: "", customer: "", priority: "medium", status: "open" });
 
-  const data = filter ? tickets.filter(t => t.status === filter) : tickets;
+  const ticketsQuery = useSupportTickets();
+  const ticketQuery = useSupportTicket(selectedId);
+  const mutations = useSupportMutations();
+  const tickets = ticketsQuery.data ?? [];
+  const visible = filter ? tickets.filter((ticket) => ticket.status === filter) : tickets;
 
-  const priorityTone = (p: string) => p === "urgent" ? "danger" : p === "high" ? "warning" : p === "medium" ? "info" : "neutral";
-  const statusTone = (s: string) => s === "open" ? "warning" : s === "pending" ? "info" : s === "resolved" ? "success" : "neutral";
-
-  const setStatus = (t: Ticket, status: Ticket["status"]) => {
-    setTickets(list => list.map(x => x.id === t.id ? { ...x, status } : x));
-    toast.success(`Ticket marked ${status}`);
-  };
-  const sendReply = () => {
-    if (!reply.trim()) { toast.error("Reply cannot be empty"); return; }
-    toast.success("Reply sent to customer");
-    setReply("");
-    if (openTicket) setStatus(openTicket, "pending");
-  };
-  const createTicket = () => {
-    if (!draft.subject || !draft.customer) { toast.error("Subject and customer required"); return; }
-    const t: Ticket = {
-      id: `tkt_${Date.now()}`, subject: draft.subject!, customer: draft.customer!,
-      priority: (draft.priority as any) || "medium", status: (draft.status as any) || "open",
-      createdAt: new Date().toISOString(),
-    };
-    setTickets(list => [t, ...list]);
-    toast.success("Ticket created");
-    setOpenNew(false); setDraft({ subject: "", customer: "", priority: "medium", status: "open" });
+  const setStatus = async (id: string, status: SupportStatus) => {
+    try {
+      await mutations.status.mutateAsync({ id, value: status });
+      toast.success(`Ticket marked ${status.toLowerCase().replace("_", " ")}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to update ticket");
+    }
   };
 
-  const columns: Column<Ticket>[] = [
-    { key: "subj", header: "Ticket", render: (t) => (
+  const sendReply = async () => {
+    const value = reply.trim();
+    if (!value || !selectedId) {
+      toast.error("Reply cannot be empty");
+      return;
+    }
+
+    try {
+      await mutations.message.mutateAsync({ id: selectedId, value });
+      setReply("");
+      toast.success("Reply sent to customer");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to send reply");
+    }
+  };
+
+  const columns: Column<SupportTicket>[] = [
+    { key: "ticket", header: "Ticket", render: (ticket) => (
       <div>
-        <div className="text-sm font-medium">{t.subject}</div>
-        <div className="text-xs text-muted-foreground">{t.id} {t.orderId && `· ${t.orderId}`}</div>
+        <div className="text-sm font-medium">{ticket.subject}</div>
+        <div className="text-xs text-muted-foreground">{ticket.ticketNumber}</div>
       </div>
     )},
-    { key: "cust", header: "Customer", render: (t) => <span className="text-sm">{t.customer}</span> },
-    { key: "pri", header: "Priority", render: (t) => <StatusBadge label={t.priority} tone={priorityTone(t.priority) as any} /> },
-    { key: "when", header: "Opened", render: (t) => <span className="text-xs text-muted-foreground">{relTime(t.createdAt)}</span> },
-    { key: "stat", header: "Status", render: (t) => <StatusBadge label={t.status} tone={statusTone(t.status) as any} /> },
-    { key: "a", header: "", className: "w-10 text-right", render: (t) => (
-      <div onClick={e => e.stopPropagation()}>
+    { key: "customer", header: "Customer", render: (ticket) => <span>{typeof ticket.userId === "object" ? ticket.userId?.name || ticket.userId?.email : ticket.userId || "—"}</span> },
+    { key: "priority", header: "Priority", render: (ticket) => <StatusBadge label={ticket.priority} tone={ticket.priority === "URGENT" ? "danger" : ticket.priority === "HIGH" ? "warning" : ticket.priority === "MEDIUM" ? "info" : "neutral"} /> },
+    { key: "when", header: "Opened", render: (ticket) => <span className="text-xs text-muted-foreground">{relTime(ticket.createdAt)}</span> },
+    { key: "status", header: "Status", render: (ticket) => <StatusBadge label={ticket.status} tone={tone(ticket.status)} /> },
+    { key: "actions", header: "", className: "w-10 text-right", render: (ticket) => (
+      <div onClick={(event) => event.stopPropagation()}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setOpenTicket(t)}><MessageSquare className="h-4 w-4" /> Reply</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setStatus(t, "resolved")}><CheckCheck className="h-4 w-4" /> Mark resolved</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setStatus(t, "closed")}>Close ticket</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setSelectedId(ticket._id)}><MessageSquare className="h-4 w-4" /> Reply</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => void setStatus(ticket._id, "RESOLVED")}><CheckCheck className="h-4 w-4" /> Mark resolved</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => void setStatus(ticket._id, "CLOSED")}>Close ticket</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
     )},
   ];
 
+  const selected = ticketQuery.data;
+
   return (
     <div className="space-y-6">
-      <PageHeader title="Support Tickets" description="Customer support inbox."
-        actions={<Button size="sm" onClick={() => setOpenNew(true)}><Plus className="h-4 w-4" /> New ticket</Button>} />
+      <PageHeader title="Support Tickets" description="Live customer support inbox." />
       <div className="grid gap-4 sm:grid-cols-4">
-        <StatCard label="Open" value={String(tickets.filter(t => t.status === "open").length)} icon={LifeBuoy} tone="warning" />
-        <StatCard label="Pending" value={String(tickets.filter(t => t.status === "pending").length)} icon={Clock} tone="info" />
-        <StatCard label="Resolved" value={String(tickets.filter(t => t.status === "resolved").length)} icon={CheckCircle2} tone="success" />
-        <StatCard label="Avg response" value="1h 24m" delta={-8.4} icon={Clock} />
+        <StatCard label="Open" value={String(tickets.filter((ticket) => ticket.status === "OPEN").length)} icon={LifeBuoy} tone="warning" />
+        <StatCard label="In progress" value={String(tickets.filter((ticket) => ticket.status === "IN_PROGRESS").length)} icon={Clock} tone="info" />
+        <StatCard label="Resolved" value={String(tickets.filter((ticket) => ticket.status === "RESOLVED").length)} icon={CheckCircle2} tone="success" />
+        <StatCard label="Closed" value={String(tickets.filter((ticket) => ticket.status === "CLOSED").length)} icon={CheckCircle2} />
       </div>
-      <DataTable data={data} columns={columns} onRowClick={(t) => setOpenTicket(t)}
-        searchable={(t) => `${t.subject} ${t.customer}`} pageSize={12}
+
+      <DataTable
+        data={visible}
+        columns={columns}
+        onRowClick={(ticket) => setSelectedId(ticket._id)}
+        searchable={(ticket) => `${ticket.subject} ${ticket.ticketNumber} ${typeof ticket.userId === "object" ? ticket.userId?.name || "" : ticket.userId || ""}`}
+        pageSize={12}
         filters={
           <div className="flex flex-wrap gap-1.5">
-            <FilterChip active={filter === null} onClick={() => setFilter(null)}>All</FilterChip>
-            {(["open","pending","resolved","closed"] as const).map(s => (
-              <FilterChip key={s} active={filter === s} onClick={() => setFilter(s)}>{s}</FilterChip>
-            ))}
+            <FilterChip active={!filter} onClick={() => setFilter(null)}>All</FilterChip>
+            {statuses.map((status) => <FilterChip key={status} active={filter === status} onClick={() => setFilter(status)}>{status.toLowerCase().replace("_", " ")}</FilterChip>)}
           </div>
         }
       />
 
-      <Sheet open={!!openTicket} onOpenChange={(v) => { if (!v) { setOpenTicket(null); setReply(""); } }}>
-        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
-          {openTicket && (
+      <Sheet open={Boolean(selectedId)} onOpenChange={(open) => { if (!open) { setSelectedId(null); setReply(""); } }}>
+        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
+          {selected && (
             <div className="space-y-5 py-2">
               <SheetHeader className="p-0">
-                <div className="flex items-center gap-3">
-                  <SheetTitle className="text-lg">{openTicket.subject}</SheetTitle>
-                  <StatusBadge label={openTicket.status} tone={statusTone(openTicket.status) as any} />
-                </div>
-                <SheetDescription>{openTicket.id} · Opened {dateTime(openTicket.createdAt)}</SheetDescription>
+                <SheetTitle>{selected.subject}</SheetTitle>
+                <SheetDescription>{selected.ticketNumber} · Opened {dateTime(selected.createdAt)}</SheetDescription>
               </SheetHeader>
+
               <div className="rounded-xl border p-4 text-sm">
-                <div className="text-xs uppercase text-muted-foreground">Customer</div>
-                <div className="mt-1 font-medium">{openTicket.customer}</div>
-                {openTicket.orderId && <div className="mt-1 text-xs text-muted-foreground">Related order: {openTicket.orderId}</div>}
+                <div className="font-semibold">{typeof selected.userId === "object" ? selected.userId?.name || selected.userId?.email : "Customer"}</div>
+                <div className="mt-1 text-xs text-muted-foreground">{selected.description}</div>
+                <div className="mt-2"><StatusBadge label={selected.status} tone={tone(selected.status)} /></div>
               </div>
+
+              <div className="space-y-3">
+                {(selected.messages ?? []).map((message) => (
+                  <div key={message._id} className="rounded-xl border p-3">
+                    <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                      <span>{message.senderId?.name || message.senderRole}</span>
+                      <span>{dateTime(message.createdAt)}</span>
+                    </div>
+                    <div className="mt-1 whitespace-pre-wrap text-sm">{message.message}</div>
+                  </div>
+                ))}
+              </div>
+
               <div className="space-y-2">
-                <Label>Reply</Label>
-                <Textarea rows={4} value={reply} onChange={e => setReply(e.target.value)} placeholder="Write your response..." />
+                <Textarea rows={4} value={reply} onChange={(event) => setReply(event.target.value)} placeholder="Write your response..." />
                 <div className="flex gap-2">
-                  <Button onClick={sendReply}><MessageSquare className="h-4 w-4" /> Send reply</Button>
-                  <Button variant="outline" onClick={() => { setStatus(openTicket, "resolved"); setOpenTicket(null); }}>
-                    <CheckCheck className="h-4 w-4" /> Resolve
-                  </Button>
+                  <Button onClick={() => void sendReply()} disabled={mutations.message.isPending}><MessageSquare className="h-4 w-4" /> Send reply</Button>
+                  <Button variant="outline" onClick={() => { void setStatus(selected._id, "RESOLVED"); setSelectedId(null); }} disabled={mutations.status.isPending}><CheckCheck className="h-4 w-4" /> Resolve</Button>
                 </div>
               </div>
             </div>
           )}
         </SheetContent>
       </Sheet>
-
-      <Dialog open={openNew} onOpenChange={setOpenNew}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>New ticket</DialogTitle></DialogHeader>
-          <div className="grid gap-3">
-            <div className="space-y-1.5"><Label>Subject</Label><Input value={draft.subject ?? ""} onChange={e => setDraft(d => ({ ...d, subject: e.target.value }))} /></div>
-            <div className="space-y-1.5"><Label>Customer name</Label><Input value={draft.customer ?? ""} onChange={e => setDraft(d => ({ ...d, customer: e.target.value }))} /></div>
-            <div className="space-y-1.5"><Label>Priority</Label>
-              <Select value={draft.priority} onValueChange={v => setDraft(d => ({ ...d, priority: v as any }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{["low","medium","high","urgent"].map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter><Button variant="outline" onClick={() => setOpenNew(false)}>Cancel</Button><Button onClick={createTicket}>Create ticket</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
