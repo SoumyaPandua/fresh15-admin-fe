@@ -7,8 +7,24 @@ export const DELIVERY_STATUSES = [
 ] as const;
 export type DeliveryStatus = (typeof DELIVERY_STATUSES)[number];
 
-export type DeliveryRider = { _id?: string; name?: string; email?: string; phone?: string; role?: string; portal?: string; isActive?: boolean; profileImage?: string; };
-export type DeliveryOrderRef = { _id?: string; orderNumber?: string; orderStatus?: string; paymentStatus?: string; paymentMethod?: string; grandTotal?: number; };
+export type DeliveryRider = {
+  _id?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  role?: string;
+  portal?: string;
+  isActive?: boolean;
+  profileImage?: string;
+};
+export type DeliveryOrderRef = {
+  _id?: string;
+  orderNumber?: string;
+  orderStatus?: string;
+  paymentStatus?: string;
+  paymentMethod?: string;
+  grandTotal?: number;
+};
 
 export type ApiDelivery = {
   _id: string;
@@ -71,6 +87,13 @@ export const deliveryRider = (d: ApiDelivery): DeliveryRider | null =>
 
 export const deliveryRiderId = (d: ApiDelivery) =>
   typeof d.riderId === "string" ? d.riderId : (d.riderId?._id ?? "");
+
+export const isPartnerRider = (rider: DeliveryRider | null | undefined) =>
+  Boolean(
+    rider &&
+    String(rider.role ?? "").toUpperCase() === "PARTNER" &&
+    String(rider.portal ?? "").toLowerCase() === "partner",
+  );
 
 export const deliveryLabel = (s?: string) => (s ?? "").toLowerCase().replace(/_/g, " ") || "unknown";
 
