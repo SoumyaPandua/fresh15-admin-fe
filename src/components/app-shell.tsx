@@ -43,7 +43,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </SidebarInset>
       </div>
       <Fresh15AiAssistant />
-      <Fresh15AiAgent />
+      {/* <Fresh15AiAgent /> */}
     </SidebarProvider>
   );
 }
